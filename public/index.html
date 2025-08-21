@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live TV Streamer</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Live TV Player</h1>
+            <p>Select a channel to start streaming.</p>
+        </header>
+
+        <main>
+            <div class="player-container">
+                <video id="videoPlayer" controls></video>
+            </div>
+            <nav id="channelList" class="channel-grid">
+                </nav>
+        </main>
+    </div>
+
+    <script>
+        const videoPlayer = document.getElementById('videoPlayer');
+        const channelList = document.getElementById('channelList');
+        const jsonUrl = 'https://raw.githubusercontent.com/abusaeeidx/Toffee-playlist/main/script_api/data.json';
+        let hls = null;
+
+        // Function to play a selected channel
+        function playChannel(channelId) {
+            // URL points to our own backend proxy
+            const streamUrl = `/api/stream?id=${channelId}`;
+
+            if (Hls.isSupported()) {
+                if (hls) {
+                    hls.destroy(); // Destroy previous instance
+                }
+                hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoPlayer.play();
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayer.src = streamUrl;
+                videoPlayer.addEventListener('loadedmetadata', () => {
+                    videoPlayer.play();
+                });
+            }
+        }
+
+        // Fetch the channel list and create buttons
+        async function loadChannels() {
+            try {
+                const response = await fetch(jsonUrl);
+                const data = await response.json();
+                
+                channelList.innerHTML = ''; // Clear existing list
+                
+                data.channels.forEach(channel => {
+                    const button = document.createElement('button');
+                    const channelId = channel.name.toLowerCase().replace(/\s+/g, '-');
+                    button.innerText = channel.name;
+                    button.onclick = () => playChannel(channelId);
+                    channelList.appendChild(button);
+                });
+            } catch (error) {
+                channelList.innerHTML = '<p>Failed to load channels.</p>';
+                console.error('Error loading channels:', error);
+            }
+        }
+        
+        // Initial load
+        loadChannels();
+    </script>
+
+</body>
+</html>
